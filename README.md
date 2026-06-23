@@ -1,103 +1,49 @@
 # Algoritmos de Busca em Strings
 
-Aplicação para explorar, visualizar e comparar algoritmos de busca de padrões em
-texto: **Naive**, **Rabin-Karp**, **KMP** e **Boyer-Moore**. Inclui interface com
-visualização passo a passo, padrão Strategy, observabilidade com OpenTelemetry
-(traces, métricas e logs) e dashboard de comparação.
+Busca de padrões em texto com 4 algoritmos: **Naive**, **Rabin-Karp**, **KMP** e
+**Boyer-Moore**. Inclui interface com passo a passo, dashboard de comparação e
+observabilidade com OpenTelemetry.
 
----
+## Como executar
 
-## ▶️ Como executar
+### No navegador (sem instalar nada)
 
-Há duas formas de usar o projeto. A **opção 1** não precisa instalar nada.
+Abra com duplo clique:
 
-### Opção 1 — Interface e dashboard no navegador (mais simples)
+- `web/index.html` — buscar um padrão e ver a execução passo a passo.
+- `web/dashboard.html` — gráficos comparando os algoritmos.
 
-Basta abrir os arquivos HTML com **duplo clique** (ou arrastar para o navegador):
+### No terminal (Node.js 20+)
 
-- **`web/index.html`** — carregar arquivos `.txt`, digitar um padrão, escolher o
-  algoritmo, executar e ver a busca **passo a passo** (índices comparados,
-  movimentação do padrão, tabela LPS do KMP e tabela de saltos do Boyer-Moore).
-- **`web/dashboard.html`** — gráficos comparando os algoritmos: tempo de execução,
-  número de execuções e comparações.
-
-> Os gráficos usam uma biblioteca via internet (CDN), então a primeira abertura
-> precisa de conexão.
-
-### Opção 2 — Aplicação em Node (CLI + observabilidade)
-
-Pré-requisitos: **Node.js 20+** instalado.
-
-Rode os comandos na **raiz do projeto** (onde está o `package.json`):
+Na raiz do projeto:
 
 ```bash
-npm install            # instala as dependências (só na primeira vez)
-npm run gen:data       # gera arquivos de texto grandes em ./data
-npm run demo           # demonstração rápida com os 4 algoritmos
-npm run bench          # compara os 4 algoritmos (benchmark)
-npm test               # executa os testes automatizados
+npm install        # primeira vez
+npm run demo       # demonstração rápida
+npm run bench      # compara os 4 algoritmos
+npm test           # testes
 ```
 
-Buscar com um único algoritmo ou ver o passo a passo no terminal:
+Buscar com um algoritmo específico:
 
 ```bash
 npm run start -- --algo kmp --steps --pattern algoritmo
-npm run start -- --algo boyer-moore --pattern busca --file data/texto_5120kb.txt
 ```
 
-Algoritmos disponíveis em `--algo`: `naive`, `rabin-karp`, `kmp`, `boyer-moore`.
-
-#### Rodar sem Docker (telemetria no terminal)
-
-Por padrão a telemetria é enviada para um coletor. Para ver traces, métricas e
-logs direto no terminal, sem precisar de Docker, no **PowerShell**:
-
-```powershell
-$env:OTEL_ENABLED="false"; npm run bench
-```
-
-#### Observabilidade completa com Grafana (opcional, precisa de Docker)
-
-```bash
-docker compose up -d
-npm run start -- --benchmark --loop 30
-```
-
-Depois acesse `http://localhost:3000` e abra o dashboard
-**"Algoritmos de Busca — Observabilidade"**.
-
----
-
-## 📁 Estrutura do projeto
+## Estrutura
 
 ```
-.
-├── web/
-│   ├── index.html        # interface com visualização passo a passo
-│   └── dashboard.html    # dashboard de comparação
-├── src/
-│   ├── domain/           # SearchStrategy (interface) e SearchResult (retorno)
-│   ├── strategies/       # Naive, Rabin-Karp, KMP, Boyer-Moore
-│   ├── context/          # SearchContext (aplica a observabilidade)
-│   ├── telemetry/        # OpenTelemetry: traces, métricas e logs
-│   ├── data/             # geração e carregamento de textos
-│   └── app/              # linha de comando e benchmark
-├── test/                 # testes automatizados
-├── observability/        # configs do Collector, Prometheus, Tempo, Loki e Grafana
-├── docs/
-│   └── RELATORIO.pdf     # relatório de análise
-├── docker-compose.yml
-├── package.json
-└── tsconfig.json
+web/      interface e dashboard
+src/      código (algoritmos, Strategy, telemetria)
+test/     testes
+docs/     RELATORIO.pdf
 ```
 
----
+## Algoritmos
 
-## 🧠 Algoritmos e complexidade
-
-| Algoritmo | Complexidade | Ideia principal |
-|---|---|---|
-| Naive | O(n·m) | Compara o padrão em cada posição, caractere a caractere |
-| Rabin-Karp | O(n+m) médio | Hash de rolagem; compara caracteres só quando o hash bate |
-| KMP | O(n+m) | Tabela LPS evita re-comparar trechos já casados |
-| Boyer-Moore | O(n/m) melhor | Compara da direita p/ esquerda e pula trechos (bad-character) |
+| Algoritmo | Complexidade |
+|---|---|
+| Naive | O(n·m) |
+| Rabin-Karp | O(n+m) médio |
+| KMP | O(n+m) |
+| Boyer-Moore | O(n/m) melhor |
