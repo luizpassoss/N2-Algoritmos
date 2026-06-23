@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard — Busca em Strings</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#ffffff; --fg:#111827; --muted:#6b7280; --line:#e5e7eb; --soft:#f9fafb;
+    --c1:#2563eb; --c2:#f59e0b; --c3:#10b981; --c4:#8b5cf6;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--fg);}
+  header{padding:28px 32px 18px;}
+  h1{margin:0;font-size:18px;font-weight:600;}
+  header p{margin:4px 0 0;color:var(--muted);font-size:13px;}
+  .bar{display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;padding:0 32px 20px;border-bottom:1px solid var(--line);}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  label{font-size:12px;color:var(--muted);}
+  input,select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px;color:var(--fg);background:#fff;}
+  input[type=text]{width:150px;}
+  button{padding:9px 18px;border:1px solid var(--c1);border-radius:8px;cursor:pointer;font-weight:600;background:var(--c1);color:#fff;font-size:14px;}
+  button:disabled{opacity:.5;cursor:default;}
+  .status{font-size:12px;color:var(--muted);}
+  main{padding:24px 32px;}
+  .kpis{display:flex;gap:40px;flex-wrap:wrap;margin-bottom:28px;}
+  .kpi .v{font-size:26px;font-weight:700;}
+  .kpi .k{font-size:12px;color:var(--muted);margin-top:2px;}
+  .charts{display:grid;grid-template-columns:1fr 1fr;gap:32px;}
+  @media(max-width:820px){.charts{grid-template-columns:1fr;}}
+  .chart h2{font-size:13px;font-weight:600;margin:0 0 14px;color:var(--fg);}
+  canvas{max-height:260px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;}
+  th,td{padding:9px 8px;text-align:right;border-bottom:1px solid var(--line);}
+  th:first-child,td:first-child{text-align:left;}
+  th{color:var(--muted);font-weight:500;font-size:12px;}
+  td.n{font-variant-numeric:tabular-nums;}
+  .best{color:var(--c3);font-weight:700;}
+  .note{color:var(--muted);font-size:12px;margin-top:14px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>Dashboard — Algoritmos de Busca em Strings</h1>
+  <p>Naive · Rabin-Karp · KMP · Boyer-Moore</p>
+</header>
+
+<div class="bar">
+  <div class="field"><label>Padrão</label><input type="text" id="pattern" value="algoritmo" /></div>
+  <div class="field"><label>Repetições</label><select id="reps"><option>3</option><option selected>5</option><option>10</option></select></div>
+  <div class="field"><label>Arquivo .txt (opcional)</label><input type="file" id="file" accept=".txt" /></div>
+  <button id="run">Executar</button>
+  <span class="status" id="status"></span>
+</div>
+
+<main>
+  <div class="kpis" id="kpis"></div>
+  <div class="charts">
+    <div class="chart"><h2>Tempo de execução por algoritmo (ms)</h2><canvas id="chTime"></canvas></div>
+    <div class="chart"><h2>Comparações entre algoritmos</h2><canvas id="chComp"></canvas></div>
+    <div class="chart"><h2>Número de execuções</h2><canvas id="chExec"></canvas></div>
+    <div class="chart"><h2>Tempo × tamanho do texto (ms)</h2><canvas id="chScale"></canvas></div>
+    <div class="chart" style="grid-column:1/-1">
+      <h2>Comparativo</h2>
+      <table id="tbl"><thead><tr>
+        <th>Algoritmo</th><th>Complexidade</th><th>Ocorrências</th><th>Comparações</th><th>Tempo (ms)</th><th>Execuções</th>
+      </tr></thead><tbody></tbody></table>
+      <p class="note">Tempo medido com performance.now(); comparações de caractere independentes de hardware. Cada valor vem de execuções reais dos algoritmos no navegador.</p>
+    </div>
+  </div>
+</main>
+
+<script>
+function naive(t,p){const n=t.length,m=p.length,M=[];let c=0;if(m>0&&m<=n)for(let s=0;s<=n-m;s++){let j=0;while(j<m){c++;if(t[s+j]!==p[j])break;j++;}if(j===m)M.push(s);}return{matches:M,comparisons:c};}
+function rabinKarp(t,p){const B=256,MOD=1e9+7,n=t.length,m=p.length,M=[];let c=0;if(m>0&&m<=n){let high=1;for(let i=0;i<m-1;i++)high=(high*B)%MOD;let ph=0,wh=0;for(let i=0;i<m;i++){ph=(ph*B+p.charCodeAt(i))%MOD;wh=(wh*B+t.charCodeAt(i))%MOD;}for(let s=0;s<=n-m;s++){if(ph===wh){let j=0;while(j<m){c++;if(t[s+j]!==p[j])break;j++;}if(j===m)M.push(s);}if(s<n-m){wh=((wh-t.charCodeAt(s)*high)*B+t.charCodeAt(s+m))%MOD;if(wh<0)wh+=MOD;}}}return{matches:M,comparisons:c};}
+function buildLPS(p){const m=p.length,l=new Array(m).fill(0);let len=0,i=1;while(i<m){if(p[i]===p[len])l[i++]=++len;else if(len>0)len=l[len-1];else l[i++]=0;}return l;}
+function kmp(t,p){const n=t.length,m=p.length,M=[];let c=0;const L=m>0?buildLPS(p):[];if(m>0&&m<=n){let i=0,j=0;while(i<n){c++;if(t[i]===p[j]){i++;j++;if(j===m){M.push(i-j);j=L[j-1];}}else if(j>0)j=L[j-1];else i++;}}return{matches:M,comparisons:c};}
+function boyerMoore(t,p){const n=t.length,m=p.length,M=[];let c=0;const bc={};for(let i=0;i<m;i++)bc[p[i]]=i;if(m>0&&m<=n){let s=0;while(s<=n-m){let j=m-1;while(j>=0){c++;if(t[s+j]!==p[j])break;j--;}if(j<0){M.push(s);const nx=s+m<n?m-((bc[t[s+m]]??-1)):1;s+=Math.max(1,nx);}else{const lo=bc[t[s+j]]??-1;s+=Math.max(1,j-lo);}}}return{matches:M,comparisons:c};}
+
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const ALGOS={
+  naive:{fn:naive,label:"Naive",complexity:"O(n·m)",color:css('--c1')},
+  "rabin-karp":{fn:rabinKarp,label:"Rabin-Karp",complexity:"O(n+m) médio",color:css('--c2')},
+  kmp:{fn:kmp,label:"KMP",complexity:"O(n+m)",color:css('--c3')},
+  "boyer-moore":{fn:boyerMoore,label:"Boyer-Moore",complexity:"O(n/m) melhor",color:css('--c4')},
+};
+const SIZES_KB=[50,200,500,1024];
+const $=id=>document.getElementById(id);
+const labels=()=>Object.values(ALGOS).map(a=>a.label);
+const palette=()=>Object.values(ALGOS).map(a=>a.color);
+let charts={};
+
+function genText(kb,pattern){const W=["busca","texto","padrao","dados","analise","tempo","hash","prefixo","sufixo","indice"];const P=[];let b=0,i=0;const tg=kb*1024;while(b<tg){const w=i%200===0?pattern:W[i%W.length];P.push(w);b+=w.length+1;i++;}return P.join(" ");}
+
+function bench(text,pattern,reps){
+  const out={};
+  for(const key of Object.keys(ALGOS)){
+    let best=Infinity,sum=0,last;
+    for(let r=0;r<reps;r++){const t0=performance.now();last=ALGOS[key].fn(text,pattern);const dt=performance.now()-t0;best=Math.min(best,dt);sum+=dt;}
+    out[key]={avg:sum/reps,best,matches:last.matches.length,comparisons:last.comparisons,executions:reps};
+  }
+  return out;
+}
+
+async function run(){
+  const pattern=$("pattern").value||"algoritmo";
+  const reps=parseInt($("reps").value,10);
+  $("status").textContent="executando…";
+  $("run").disabled=true;
+  await new Promise(r=>setTimeout(r,30));
+
+  let texts=SIZES_KB.map(kb=>({kb,text:genText(kb,pattern),label:kb+"KB"}));
+  if(window.__uploaded) texts.push({kb:Math.round(window.__uploaded.length/1024),text:window.__uploaded,label:"arquivo"});
+
+  const perSize=texts.map(t=>({label:t.label,kb:t.kb,res:bench(t.text,pattern,reps)}));
+  const big=perSize[perSize.length-1];
+
+  renderKpis(big,perSize,reps);
+  barChart('time','chTime',Object.keys(ALGOS).map(k=>big.res[k].avg));
+  barChart('comp','chComp',Object.keys(ALGOS).map(k=>big.res[k].comparisons),true);
+  barChart('exec','chExec',Object.keys(ALGOS).map(k=>perSize.reduce((a,p)=>a+p.res[k].executions,0)));
+  scaleChart(perSize);
+  renderTable(big);
+
+  $("status").textContent="concluído • "+new Date().toLocaleTimeString();
+  $("run").disabled=false;
+}
+
+function renderKpis(big,perSize,reps){
+  const fastest=Object.entries(big.res).sort((a,b)=>a[1].avg-b[1].avg)[0];
+  const totalExec=Object.values(big.res).reduce((a,b)=>a+b.executions,0)*perSize.length;
+  $("kpis").innerHTML=`
+    <div class="kpi"><div class="v">${ALGOS[fastest[0]].label}</div><div class="k">Mais rápido (${fastest[1].avg.toFixed(3)} ms)</div></div>
+    <div class="kpi"><div class="v">${Object.values(big.res)[0].matches}</div><div class="k">Ocorrências (${big.label})</div></div>
+    <div class="kpi"><div class="v">${totalExec}</div><div class="k">Execuções totais</div></div>`;
+}
+
+function destroy(k){if(charts[k])charts[k].destroy();}
+function gridOpts(log){return{responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:css('--muted')}},y:{type:log?'logarithmic':'linear',beginAtZero:!log,grid:{color:css('--line')},ticks:{color:css('--muted')}}}};}
+function barChart(key,canvas,data,log){destroy(key);charts[key]=new Chart($(canvas),{type:'bar',data:{labels:labels(),datasets:[{data,backgroundColor:palette(),borderRadius:6,barPercentage:.65}]},options:gridOpts(log)});}
+function scaleChart(perSize){destroy('scale');charts.scale=new Chart($("chScale"),{type:'line',data:{labels:perSize.map(p=>p.label),datasets:Object.keys(ALGOS).map(k=>({label:ALGOS[k].label,data:perSize.map(p=>p.res[k].avg),borderColor:ALGOS[k].color,backgroundColor:ALGOS[k].color,tension:.3,pointRadius:3}))},options:{responsive:true,plugins:{legend:{labels:{color:css('--fg'),boxWidth:12}}},scales:gridOpts(false).scales}});}
+
+function renderTable(big){
+  const minAvg=Math.min(...Object.values(big.res).map(r=>r.avg));
+  $("tbl").querySelector("tbody").innerHTML=Object.keys(ALGOS).map(k=>{const r=big.res[k];return `<tr>
+    <td>${ALGOS[k].label}</td><td style="text-align:right;color:var(--muted)">${ALGOS[k].complexity}</td>
+    <td class="n">${r.matches}</td><td class="n">${r.comparisons.toLocaleString('pt-BR')}</td>
+    <td class="n ${r.avg===minAvg?'best':''}">${r.avg.toFixed(4)}</td><td class="n">${r.executions}</td></tr>`;}).join("");
+}
+
+$("file").addEventListener("change",async e=>{const f=e.target.files[0];if(f){window.__uploaded=await f.text();$("status").textContent="arquivo carregado: "+f.name;}});
+$("run").addEventListener("click",run);
+run();
+</script>
+</body>
+</html>

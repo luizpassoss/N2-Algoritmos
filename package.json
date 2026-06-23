@@ -1,0 +1,45 @@
+{
+  "name": "search-observability",
+  "version": "1.0.0",
+  "description": "Aplicação de algoritmos de busca de padrões em strings (Naive, Rabin-Karp, KMP, Boyer-Moore) com padrão Strategy e observabilidade via OpenTelemetry (traces, métricas e logs).",
+  "type": "module",
+  "main": "dist/app/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rimraf dist data/*.txt",
+    "gen:data": "tsx src/data/generateData.ts",
+    "start": "tsx src/app/index.ts",
+    "bench": "tsx src/app/index.ts --benchmark",
+    "demo": "tsx src/app/index.ts --demo",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "tsx --test test/strategies.test.ts"
+  },
+  "keywords": [
+    "search",
+    "strategy-pattern",
+    "opentelemetry",
+    "observability",
+    "grafana"
+  ],
+  "author": "Luiz Fernando",
+  "license": "MIT",
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/api-logs": "^0.52.1",
+    "@opentelemetry/exporter-logs-otlp-http": "^0.52.1",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.52.1",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.52.1",
+    "@opentelemetry/resources": "^1.25.1",
+    "@opentelemetry/sdk-logs": "^0.52.1",
+    "@opentelemetry/sdk-metrics": "^1.25.1",
+    "@opentelemetry/sdk-node": "^0.52.1",
+    "@opentelemetry/sdk-trace-node": "^1.25.1",
+    "@opentelemetry/semantic-conventions": "^1.25.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "rimraf": "^5.0.7",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0"
+  }
+}

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Visualizador de Algoritmos de Busca em Strings</title>
+<style>
+  :root {
+    --bg: #0f172a; --panel: #1e293b; --panel2: #273449; --text: #e2e8f0;
+    --muted: #94a3b8; --accent: #38bdf8; --ok: #22c55e; --bad: #ef4444;
+    --warn: #f59e0b; --border: #334155;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.5;
+  }
+  header { padding: 20px 24px; border-bottom: 1px solid var(--border); }
+  h1 { margin: 0; font-size: 20px; }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+  .container { display: grid; grid-template-columns: 340px 1fr; gap: 0; min-height: calc(100vh - 70px); }
+  .sidebar { padding: 20px; border-right: 1px solid var(--border); background: var(--panel); }
+  .main { padding: 20px; overflow: auto; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 14px 0 6px; text-transform: uppercase; letter-spacing: .03em; }
+  input[type=text], select, textarea {
+    width: 100%; padding: 9px 10px; background: var(--panel2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 90px; font-family: ui-monospace, monospace; }
+  .file-row { display: flex; align-items: center; gap: 8px; }
+  .btns { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  button {
+    flex: 1; padding: 10px; border: none; border-radius: 8px; cursor: pointer;
+    font-size: 14px; font-weight: 600; background: var(--accent); color: #04263a;
+  }
+  button.secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  .step-controls { display: flex; gap: 8px; align-items: center; margin: 10px 0; }
+  .step-controls button { flex: none; padding: 6px 12px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 12px; margin-bottom: 18px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .card .k { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+  .card .v { font-size: 20px; font-weight: 700; margin-top: 4px; }
+  .section { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 18px; }
+  .section h2 { font-size: 14px; margin: 0 0 12px; color: var(--accent); }
+  .viz { font-family: ui-monospace, monospace; font-size: 15px; white-space: pre-wrap; word-break: break-all; line-height: 1.9; }
+  .viz .cur { background: var(--accent); color: #04263a; border-radius: 3px; padding: 0 1px; }
+  .viz .ok { background: var(--ok); color: #04261a; border-radius: 3px; padding: 0 1px; }
+  .viz .bad { background: var(--bad); color: #2a0606; border-radius: 3px; padding: 0 1px; }
+  .viz .hit { text-decoration: underline; text-decoration-color: var(--warn); text-underline-offset: 3px; }
+  .pattern-line { font-family: ui-monospace, monospace; margin-top: 8px; color: var(--muted); }
+  .note { background: var(--panel2); border-left: 3px solid var(--accent); padding: 8px 12px; border-radius: 4px; margin-top: 10px; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 7px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; }
+  td.num { font-family: ui-monospace, monospace; }
+  .aux { display: flex; gap: 4px; flex-wrap: wrap; font-family: ui-monospace, monospace; font-size: 13px; }
+  .aux .cell { background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; text-align: center; min-width: 30px; }
+  .aux .cell small { display: block; color: var(--muted); font-size: 10px; }
+  .log { font-family: ui-monospace, monospace; font-size: 12px; max-height: 220px; overflow: auto; }
+  .log div { padding: 2px 0; border-bottom: 1px solid var(--panel2); }
+  .muted { color: var(--muted); }
+  .bar { height: 8px; background: var(--accent); border-radius: 4px; }
+  .winner { color: var(--ok); font-weight: 700; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Visualizador de Algoritmos de Busca em Strings</h1>
+  <p>Naive · Rabin-Karp · KMP · Boyer-Moore — execução, passo a passo, métricas e complexidade.</p>
+</header>
+
+<div class="container">
+  <aside class="sidebar">
+    <label>Arquivos .txt (1 ou N)</label>
+    <div class="file-row">
+      <input type="file" id="files" accept=".txt" multiple />
+    </div>
+    <select id="fileSelect" style="margin-top:8px; display:none"></select>
+
+    <label>Ou cole/edite o texto</label>
+    <textarea id="text" placeholder="Cole aqui o texto ou carregue arquivos .txt">abracadabra: um algoritmo de busca procura um padrao neste texto. o algoritmo eficiente economiza comparacoes. algoritmo.</textarea>
+
+    <label>Padrão (string de busca)</label>
+    <input type="text" id="pattern" value="algoritmo" />
+
+    <label>Algoritmo</label>
+    <select id="algo">
+      <option value="naive">Naive (força bruta) — O(n·m)</option>
+      <option value="rabin-karp">Rabin-Karp — O(n+m) médio</option>
+      <option value="kmp">KMP — O(n+m)</option>
+      <option value="boyer-moore">Boyer-Moore — O(n/m) melhor</option>
+    </select>
+
+    <div class="btns">
+      <button id="run">Executar</button>
+      <button id="step" class="secondary">Passo a passo</button>
+    </div>
+    <div class="btns">
+      <button id="compareAll" class="secondary">Comparar todos</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="cards" id="cards"></div>
+
+    <div class="section" id="vizSection" style="display:none">
+      <h2>Visualização passo a passo</h2>
+      <div class="step-controls">
+        <button id="prev" class="secondary">◀ Anterior</button>
+        <button id="play" class="secondary">▶ Play</button>
+        <button id="next" class="secondary">Próximo ▶</button>
+        <span class="muted" id="stepCounter"></span>
+      </div>
+      <div class="viz" id="viz"></div>
+      <div class="pattern-line" id="patternLine"></div>
+      <div class="note" id="note"></div>
+    </div>
+
+    <div class="section" id="auxSection" style="display:none">
+      <h2 id="auxTitle">Estrutura auxiliar</h2>
+      <div class="aux" id="aux"></div>
+    </div>
+
+    <div class="section" id="compareSection" style="display:none">
+      <h2>Comparação entre algoritmos</h2>
+      <table id="compareTable">
+        <thead><tr><th>Algoritmo</th><th>Complexidade</th><th>Ocorrências</th><th>Comparações</th><th>Tempo (ms)</th><th>Tempo relativo</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="muted" style="margin-top:10px; font-size:12px">Tempo medido com <code>performance.now()</code>, média de 5 execuções. Comparações = comparações de caractere (independente de hardware).</p>
+    </div>
+
+    <div class="section">
+      <h2>Log da execução</h2>
+      <div class="log" id="log"><div class="muted">Nenhuma execução ainda.</div></div>
+    </div>
+  </main>
+</div>
+
+<script>
+function naive(text, pattern, rec) {
+  const n = text.length, m = pattern.length, matches = []; let comparisons = 0;
+  if (m > 0 && m <= n) for (let s = 0; s <= n - m; s++) {
+    let j = 0;
+    while (j < m) {
+      comparisons++;
+      const ok = text[s+j] === pattern[j];
+      rec({ shift: s, textIndex: s+j, patternIndex: j, match: ok,
+        note: ok ? `'${pattern[j]}' casa em texto[${s+j}]` : `'${text[s+j]}' ≠ '${pattern[j]}' em texto[${s+j}] → desloca padrão` });
+      if (!ok) break; j++;
+    }
+    if (j === m) matches.push(s);
+  }
+  return { matches, comparisons, aux: {} };
+}
+
+function rabinKarp(text, pattern, rec) {
+  const B = 256, MOD = 1000000007, n = text.length, m = pattern.length, matches = []; let comparisons = 0;
+  if (m > 0 && m <= n) {
+    let high = 1; for (let i=0;i<m-1;i++) high=(high*B)%MOD;
+    let ph=0, wh=0;
+    for (let i=0;i<m;i++){ ph=(ph*B+pattern.charCodeAt(i))%MOD; wh=(wh*B+text.charCodeAt(i))%MOD; }
+    for (let s=0;s<=n-m;s++){
+      const hit = ph===wh;
+      rec({ shift:s, textIndex:s, patternIndex:-1, match:hit,
+        note: hit ? `hash da janela = hash do padrão → verifica caracteres` : `hash difere → pula janela inteira` });
+      if (hit) {
+        let j=0; while(j<m){ comparisons++; const ok=text[s+j]===pattern[j];
+          rec({ shift:s, textIndex:s+j, patternIndex:j, match:ok, note: ok?`confirma '${pattern[j]}'`:`colisão de hash em texto[${s+j}]` });
+          if(!ok)break; j++; }
+        if (j===m) matches.push(s);
+      }
+      if (s<n-m){ wh=((wh-text.charCodeAt(s)*high)*B+text.charCodeAt(s+m))%MOD; if(wh<0)wh+=MOD; }
+    }
+  }
+  return { matches, comparisons, aux: {} };
+}
+
+function buildLPS(pattern) {
+  const m = pattern.length, lps = new Array(m).fill(0); let len=0, i=1;
+  while (i<m){ if(pattern[i]===pattern[len]) lps[i++]=++len; else if(len>0) len=lps[len-1]; else lps[i++]=0; }
+  return lps;
+}
+function kmp(text, pattern, rec) {
+  const n=text.length, m=pattern.length, matches=[]; let comparisons=0;
+  const lps = m>0 ? buildLPS(pattern) : [];
+  if (m>0 && m<=n){
+    let i=0,j=0;
+    while (i<n){
+      comparisons++;
+      const ok = text[i]===pattern[j];
+      rec({ shift:i-j, textIndex:i, patternIndex:j, match:ok,
+        note: ok ? `'${pattern[j]}' casa (i=${i}, j=${j})` : (j>0?`falha → LPS: j de ${j} para ${lps[j-1]}`:`falha em j=0 → avança i`) });
+      if (ok){ i++; j++; if(j===m){ matches.push(i-j); j=lps[j-1]; } }
+      else if (j>0) j=lps[j-1]; else i++;
+    }
+  }
+  return { matches, comparisons, aux: { lps } };
+}
+
+function buildBadChar(pattern){ const t={}; for(let i=0;i<pattern.length;i++) t[pattern[i]]=i; return t; }
+function boyerMoore(text, pattern, rec) {
+  const n=text.length, m=pattern.length, matches=[]; let comparisons=0;
+  const badChar = m>0 ? buildBadChar(pattern) : {};
+  if (m>0 && m<=n){
+    let s=0;
+    while (s<=n-m){
+      let j=m-1;
+      while (j>=0){ comparisons++; const ok=text[s+j]===pattern[j];
+        rec({ shift:s, textIndex:s+j, patternIndex:j, match:ok,
+          note: ok?`'${pattern[j]}' casa (direita→esquerda) em texto[${s+j}]`:`'${text[s+j]}' ≠ '${pattern[j]}' → salto bad-char` });
+        if(!ok)break; j--; }
+      if (j<0){ matches.push(s); const nx = s+m<n ? m-((badChar[text[s+m]]??-1)) : 1; s+=Math.max(1,nx); }
+      else { const lo = badChar[text[s+j]] ?? -1; s += Math.max(1, j-lo); }
+    }
+  }
+  return { matches, comparisons, aux: { badChar } };
+}
+
+const ALGOS = {
+  naive: { fn: naive, label: "Naive", complexity: "O(n·m)" },
+  "rabin-karp": { fn: rabinKarp, label: "Rabin-Karp", complexity: "O(n+m) médio" },
+  kmp: { fn: kmp, label: "KMP", complexity: "O(n+m)" },
+  "boyer-moore": { fn: boyerMoore, label: "Boyer-Moore", complexity: "O(n/m) melhor" },
+};
+
+function execute(algoKey, text, pattern, recordSteps, maxSteps = 3000) {
+  const steps = [];
+  const rec = recordSteps ? (s) => { if (steps.length < maxSteps) steps.push(s); } : () => {};
+  const t0 = performance.now();
+  const { matches, comparisons, aux } = ALGOS[algoKey].fn(text, pattern, rec);
+  const durationMs = performance.now() - t0;
+  return { algorithm: algoKey, pattern, textLength: text.length, patternLength: pattern.length,
+           matches, comparisons, durationMs, complexity: ALGOS[algoKey].complexity, steps, aux };
+}
+
+const $ = (id) => document.getElementById(id);
+let loadedFiles = {};
+let current = null;
+let stepIdx = 0;
+let playTimer = null;
+
+$("files").addEventListener("change", async (e) => {
+  loadedFiles = {};
+  const sel = $("fileSelect"); sel.innerHTML = "";
+  for (const file of e.target.files) {
+    const content = await file.text();
+    loadedFiles[file.name] = content;
+    const opt = document.createElement("option");
+    opt.value = file.name; opt.textContent = `${file.name} (${content.length.toLocaleString("pt-BR")} chars)`;
+    sel.appendChild(opt);
+  }
+  if (Object.keys(loadedFiles).length) {
+    sel.style.display = "block";
+    $("text").value = loadedFiles[sel.value];
+  }
+});
+$("fileSelect").addEventListener("change", (e) => { $("text").value = loadedFiles[e.target.value]; });
+
+function getText() { return $("text").value; }
+function getPattern() { return $("pattern").value; }
+
+function renderCards(r) {
+  $("cards").innerHTML = `
+    <div class="card"><div class="k">Algoritmo</div><div class="v">${ALGOS[r.algorithm].label}</div></div>
+    <div class="card"><div class="k">Complexidade</div><div class="v" style="font-size:15px">${r.complexity}</div></div>
+    <div class="card"><div class="k">Ocorrências</div><div class="v">${r.matches.length}</div></div>
+    <div class="card"><div class="k">Comparações</div><div class="v">${r.comparisons.toLocaleString("pt-BR")}</div></div>
+    <div class="card"><div class="k">Tempo</div><div class="v">${r.durationMs.toFixed(3)} ms</div></div>
+    <div class="card"><div class="k">Texto / Padrão</div><div class="v" style="font-size:15px">${r.textLength.toLocaleString("pt-BR")} / ${r.patternLength}</div></div>`;
+}
+
+function renderAux(r) {
+  const sec = $("auxSection"), box = $("aux");
+  if (r.aux && r.aux.lps) {
+    $("auxTitle").textContent = "Tabela LPS (KMP)";
+    box.innerHTML = r.pattern.split("").map((ch,i) =>
+      `<div class="cell">${ch}<small>i=${i}</small><small>lps=${r.aux.lps[i]}</small></div>`).join("");
+    sec.style.display = "block";
+  } else if (r.aux && r.aux.badChar) {
+    $("auxTitle").textContent = "Tabela bad-character (Boyer-Moore)";
+    box.innerHTML = Object.entries(r.aux.badChar).map(([ch,i]) =>
+      `<div class="cell">'${ch}'<small>último=${i}</small></div>`).join("") || '<span class="muted">vazia</span>';
+    sec.style.display = "block";
+  } else {
+    sec.style.display = "none";
+  }
+}
+
+function logLines(r) {
+  const lines = [`<div><span class="muted">[${new Date().toLocaleTimeString()}]</span> ${ALGOS[r.algorithm].label}: ${r.matches.length} ocorrência(s), ${r.comparisons.toLocaleString("pt-BR")} comparações, ${r.durationMs.toFixed(3)} ms</div>`];
+  if (r.matches.length) lines.push(`<div class="muted">posições: ${r.matches.slice(0,40).join(", ")}${r.matches.length>40?" …":""}</div>`);
+  $("log").innerHTML = lines.join("") + $("log").innerHTML;
+}
+
+function renderStep() {
+  if (!current || !current.steps.length) return;
+  stepIdx = Math.max(0, Math.min(stepIdx, current.steps.length - 1));
+  const step = current.steps[stepIdx];
+  const text = getText();
+  const winStart = Math.max(0, step.textIndex - 40);
+  const winEnd = Math.min(text.length, step.textIndex + 40);
+  let html = "";
+  if (winStart > 0) html += '<span class="muted">…</span>';
+  for (let i = winStart; i < winEnd; i++) {
+    const inMatch = current.matches.some(mi => i >= mi && i < mi + current.patternLength);
+    let cls = inMatch ? "hit" : "";
+    if (i === step.textIndex) cls = step.match ? "ok" : "bad";
+    const ch = text[i] === " " ? "·" : text[i];
+    html += cls ? `<span class="${cls}">${escapeHtml(ch)}</span>` : escapeHtml(ch);
+  }
+  if (winEnd < text.length) html += '<span class="muted">…</span>';
+  $("viz").innerHTML = html;
+
+  const pad = " ".repeat(Math.max(0, step.shift - winStart));
+  $("patternLine").textContent = (winStart>0?"  ":"") + pad + current.pattern;
+  $("note").innerHTML = `<b>Passo ${stepIdx+1}/${current.steps.length}</b> — shift=${step.shift}, texto[${step.textIndex}], padrão[${step.patternIndex}] · ${step.note}`;
+  $("stepCounter").textContent = `${stepIdx+1} / ${current.steps.length}`;
+}
+function escapeHtml(s){ return s.replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+function runOnce(recordSteps) {
+  const pattern = getPattern();
+  if (!pattern) { alert("Informe um padrão."); return; }
+  const r = execute($("algo").value, getText(), pattern, recordSteps);
+  current = r; stepIdx = 0;
+  renderCards(r); renderAux(r); logLines(r);
+  $("compareSection").style.display = "none";
+  if (recordSteps && r.steps.length) { $("vizSection").style.display = "block"; renderStep(); }
+  else { $("vizSection").style.display = "none"; }
+}
+
+$("run").addEventListener("click", () => runOnce(false));
+$("step").addEventListener("click", () => runOnce(true));
+$("next").addEventListener("click", () => { stepIdx++; renderStep(); });
+$("prev").addEventListener("click", () => { stepIdx--; renderStep(); });
+$("play").addEventListener("click", () => {
+  if (playTimer) { clearInterval(playTimer); playTimer=null; $("play").textContent="▶ Play"; return; }
+  $("play").textContent = "⏸ Pausar";
+  playTimer = setInterval(() => {
+    if (!current || stepIdx >= current.steps.length-1) { clearInterval(playTimer); playTimer=null; $("play").textContent="▶ Play"; return; }
+    stepIdx++; renderStep();
+  }, 250);
+});
+
+$("compareAll").addEventListener("click", () => {
+  const pattern = getPattern(), text = getText();
+  if (!pattern) { alert("Informe um padrão."); return; }
+  const rows = Object.keys(ALGOS).map(key => {
+    let best = Infinity, last;
+    for (let i=0;i<5;i++){ const r = execute(key, text, pattern, false); best = Math.min(best, r.durationMs); last = r; }
+    return { key, label: ALGOS[key].label, complexity: ALGOS[key].complexity,
+             matches: last.matches.length, comparisons: last.comparisons, time: best };
+  });
+  const maxTime = Math.max(...rows.map(r=>r.time));
+  const minTime = Math.min(...rows.map(r=>r.time));
+  $("compareTable").querySelector("tbody").innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.label}</td>
+      <td class="muted">${r.complexity}</td>
+      <td class="num">${r.matches}</td>
+      <td class="num">${r.comparisons.toLocaleString("pt-BR")}</td>
+      <td class="num ${r.time===minTime?'winner':''}">${r.time.toFixed(4)}</td>
+      <td><div class="bar" style="width:${Math.max(4,(r.time/maxTime)*100)}%"></div></td>
+    </tr>`).join("");
+  $("compareSection").style.display = "block";
+  $("vizSection").style.display = "none";
+  $("log").innerHTML = `<div><span class="muted">[${new Date().toLocaleTimeString()}]</span> Comparação executada para "${pattern}" em ${text.length.toLocaleString("pt-BR")} chars.</div>` + $("log").innerHTML;
+});
+</script>
+</body>
+</html>
